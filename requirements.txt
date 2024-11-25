@@ -1,0 +1,10 @@
+requests~=2.32.3
+torch~=2.5.1
+opencv-python~=4.10.0.84
+torchvision~=0.20.1
+qdrant-client~=1.12.1
+tqdm~=4.66.5
+networkx
+pandas
+moviepy
+tqdm
