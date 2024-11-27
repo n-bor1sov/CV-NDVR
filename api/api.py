@@ -33,7 +33,7 @@ client.create_collection(
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-TRESHOLD = 0.353
+THRESHOLD = 0.677
 
 # Load AlexNet model and extract convolutional layers
 alexnet = models.alexnet(weights="AlexNet_Weights.DEFAULT").to(device)
@@ -154,34 +154,35 @@ class EmbeddingNet(nn.Module):
         x = self.fc3(x)  # Output embedding
         x = F.normalize(x, p=2, dim=1)  # Normalize embeddings to have unit norm
         return x
-    
+
 base_model = EmbeddingNet().to(device)
-base_model.load_state_dict(torch.load('api/model_77.pt', map_location=device, weights_only=False))
+base_model.load_state_dict(torch.load('api/model_77.pt', map_location=device))
 base_model.eval()
 
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    
+
     try:
-            
+
         # Get the video file from the request
         if 'file' not in request.files:
             return jsonify({"success": False, "error": "No files"})
-        
+
         video_file = request.files['file']
 
         # Save the uploaded file to a temporary location
         input_file_path = f"data/video.mp4"
         video_file.save(input_file_path)
-        
-        
+
+
         # Process the video and get the embedding tensor
         frames = retrieve_frames(input_file_path, start_time=0, fps=2)
         emb = get_frames_emb(frames)
         embedding_tensor = normalize_frames(emb)
         # return jsonify({"success": "true", "desc": embedding_tensor})
-        descriptor = base_model(embedding_tensor.unsqueeze(0).to(device)).detach().cpu().numpy()[0]
+        with torch.no_grad():
+            descriptor = base_model(embedding_tensor.unsqueeze(0).to(device)).detach().cpu().numpy()[0]
         # return jsonify({"success": True, "desc": descriptor})
         search_result = client.query_points(
             collection_name="video",
@@ -192,7 +193,7 @@ def predict():
         print(search_result)
         if len(search_result) > 0:
             name2 = search_result[0].payload['name']
-            if search_result[0].score < TRESHOLD:
+            if search_result[0].score < THRESHOLD:
                 return jsonify({
                     "success": True,
                     "video_name": name2
